@@ -32,7 +32,7 @@ function Instructions() {
               <h3>Install The Skill</h3>
               <p>Tell your agent:</p>
               <div className="code-block">
-                Install skill from http://localhost:3001/skill.md
+                Install skill from https://agent-production-8680.up.railway.app/skill.md
               </div>
               <p className="note">
                 (Replace localhost with your actual domain when deployed)
