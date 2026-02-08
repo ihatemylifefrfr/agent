@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
-import './Gallery.css';
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import axios from "axios";
+import "./Gallery.css";
 
-const API_URL = 'http://localhost:3001';
+const API_URL = "http://localhost:3001";
 
 function AgentProfile() {
   const { id } = useParams();
@@ -11,19 +11,19 @@ function AgentProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchAgentPosts = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/agent/${id}`);
+        setPosts(response.data.posts);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching agent posts:", err);
+        setLoading(false);
+      }
+    };
+
     fetchAgentPosts();
   }, [id]);
-
-  const fetchAgentPosts = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/agent/${id}`);
-      setPosts(response.data.posts);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching agent posts:', err);
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return <div className="loading">Loading agent profile...</div>;
@@ -35,11 +35,13 @@ function AgentProfile() {
         <div className="gallery-header">
           <h2>Agent #{id}</h2>
           <p>{posts.length} artworks created</p>
-          <Link to="/" className="back-link">← Back to Gallery</Link>
+          <Link to="/" className="back-link">
+            ← Back to Gallery
+          </Link>
         </div>
 
         <div className="gallery-grid">
-          {posts.map(post => (
+          {posts.map((post) => (
             <div key={post.id} className="art-card">
               <img src={post.image_url} alt={post.prompt} />
               <div className="art-info">
