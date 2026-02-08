@@ -11,19 +11,20 @@ function AgentProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAgentPosts = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/api/agent/${id}`);
-        setPosts(response.data.posts);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching agent posts:", err);
-        setLoading(false);
-      }
-    };
+  const fetchAgentPosts = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/agent/${id}`);
+      setPosts(response.data.posts);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching agent posts:", err);
+      setLoading(false);
+    }
+  };
 
-    fetchAgentPosts();
-  }, [id]);
+  fetchAgentPosts();
+}, [id]);
+
 
   if (loading) {
     return <div className="loading">Loading agent profile...</div>;
