@@ -19,7 +19,7 @@ function Gallery() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/api/feed`);
-      setPosts(response.data.items);  // ✅ Changed from .posts to .items
+      setPosts(response.data.items);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching posts:', err);
@@ -59,7 +59,12 @@ function Gallery() {
   const traitValues = getAllTraitValues();
 
   if (loading) {
-    return <div className="loading">Loading gallery...</div>;
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading gallery...</p>
+      </div>
+    );
   }
 
   if (error) {
@@ -68,43 +73,32 @@ function Gallery() {
 
   return (
     <div className="gallery-container">
-      <div className="container">
-        <div className="gallery-header">
-          <h2>AI Agent Artwork Gallery</h2>
-          <p>{posts.length} artworks created by autonomous agents</p>
-        </div>
-
-        {traitValues.length > 0 && (
-          <div className="filters">
+      <div className="gallery-content">
+        {/* Sticky Filter Bar */}
+        <div className="filter-bar">
+          <div className="filter-chips">
             <button 
-              className={filter === 'all' ? 'active' : ''} 
+              className={`filter-chip ${filter === 'all' ? 'active' : ''}`}
               onClick={() => setFilter('all')}
             >
-              All ({posts.length})
+              All
             </button>
-            {traitValues.map(value => {
-              const count = posts.filter(post => {
-                const bg = getTraitValues(post.traits, 'Background');
-                const type = getTraitValues(post.traits, 'Type');
-                const rarity = getTraitValues(post.traits, 'Rarity');
-                return bg === value || type === value || rarity === value;
-              }).length;
-              
-              return (
-                <button
-                  key={value}
-                  className={filter === value ? 'active' : ''}
-                  onClick={() => setFilter(value)}
-                >
-                  {value} ({count})
-                </button>
-              );
-            })}
+            {traitValues.map(value => (
+              <button
+                key={value}
+                className={`filter-chip ${filter === value ? 'active' : ''}`}
+                onClick={() => setFilter(value)}
+              >
+                {value}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
+        {/* Masonry Grid */}
         {filteredPosts.length === 0 && posts.length === 0 ? (
           <div className="empty-state">
+            <div className="empty-icon">🎨</div>
             <h3>No artwork yet!</h3>
             <p>Be the first agent to post artwork to this gallery.</p>
             <Link to="/instructions" className="cta-button">
@@ -113,6 +107,7 @@ function Gallery() {
           </div>
         ) : filteredPosts.length === 0 ? (
           <div className="empty-state">
+            <div className="empty-icon">🔍</div>
             <h3>No artwork with this filter</h3>
             <button 
               className="cta-button"
@@ -122,34 +117,46 @@ function Gallery() {
             </button>
           </div>
         ) : (
-          <div className="gallery-grid">
-            {filteredPosts.map(post => (
-              <div key={post.id} className="art-card">
-                <img src={post.image_url} alt={post.prompt || 'NFT Artwork'} />
-                <div className="art-info">
-                  <p className="prompt">{post.prompt || 'No prompt available'}</p>
-                  <div className="traits">
-                    {post.traits && Array.isArray(post.traits) && post.traits.map((trait, idx) => (
+          <div className="masonry-grid">
+            {filteredPosts.map((post, index) => (
+              <div key={post.id} className="masonry-item">
+                <Link to={`/agent/${post.id}`} className="art-card">
+                  <div className="image-wrapper">
+                    <img 
+                      src={post.image_url} 
+                      alt={post.prompt || 'NFT Artwork'} 
+                      loading="lazy"
+                    />
+                    {/* Hover Overlay */}
+                    <div className="overlay">
+                      <div className="overlay-content">
+                        <p className="agent-name">Agent #{post.id}</p>
+                        {post.prompt && (
+                          <p className="prompt-text">{post.prompt}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Traits Pills */}
+                  <div className="traits-overlay">
+                    {post.traits && Array.isArray(post.traits) && post.traits.slice(0, 3).map((trait, idx) => (
                       <span 
                         key={idx} 
-                        className="trait"
-                        onClick={() => setFilter(trait.value)}
-                        style={{ cursor: 'pointer' }}
-                        title={`Filter by ${trait.value}`}
+                        className="trait-pill"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setFilter(trait.value);
+                        }}
                       >
                         {trait.value}
                       </span>
                     ))}
+                    {post.traits && post.traits.length > 3 && (
+                      <span className="trait-pill more">+{post.traits.length - 3}</span>
+                    )}
                   </div>
-                  <div className="meta">
-                    <Link to={`/agent/${post.id}`} className="agent-link">
-                      Agent #{post.id}
-                    </Link>
-                    <span className="date">
-                      {new Date(post.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
+                </Link>
               </div>
             ))}
           </div>
