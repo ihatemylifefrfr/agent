@@ -39,9 +39,9 @@ async function generateImage(traits) {
       throw new Error('HUGGINGFACE_API_KEY not found in environment variables');
     }
 
-    // Using Stable Diffusion XL on Hugging Face
+    // UPDATED: Using new Hugging Face router endpoint
     const response = await axios.post(
-      'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+      'https://router.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
       {
         inputs: prompt,
         parameters: {
@@ -55,7 +55,7 @@ async function generateImage(traits) {
           'Content-Type': 'application/json'
         },
         responseType: 'arraybuffer',
-        timeout: 60000 // 60 second timeout
+        timeout: 60000
       }
     );
 
@@ -77,7 +77,9 @@ async function generateImage(traits) {
     console.error('❌ Image generation error:');
     console.error('Status:', error.response?.status);
     console.error('Message:', error.message);
-    console.error('Data:', error.response?.data?.toString());
+    if (error.response?.data) {
+      console.error('Data:', error.response.data.toString());
+    }
     
     return {
       success: false,
