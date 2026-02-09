@@ -5,9 +5,12 @@ const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
 function createPromptFromTraits(traits) {
   const traitMap = {};
-  traits.forEach(t => {
-    traitMap[t.trait_type] = t.value;
-  });
+  
+  if (Array.isArray(traits)) {
+    traits.forEach(t => {
+      traitMap[t.trait_type] = t.value;
+    });
+  }
 
   let prompt = 'digital art, highly detailed, ';
 
@@ -28,7 +31,13 @@ function createPromptFromTraits(traits) {
 async function generateImage(traits) {
   try {
     const prompt = createPromptFromTraits(traits);
-    console.log('Generating image with prompt:', prompt);
+    console.log('Generating image with Hugging Face...');
+    console.log('Prompt:', prompt);
+    console.log('API Key present:', HF_API_KEY ? 'Yes' : 'No');
+
+    if (!HF_API_KEY) {
+      throw new Error('HUGGINGFACE_API_KEY not found in environment variables');
+    }
 
     // Using Stable Diffusion XL on Hugging Face
     const response = await axios.post(
@@ -36,7 +45,7 @@ async function generateImage(traits) {
       {
         inputs: prompt,
         parameters: {
-          num_inference_steps: 25,
+          num_inference_steps: 30,
           guidance_scale: 7.5
         }
       },
@@ -45,15 +54,18 @@ async function generateImage(traits) {
           'Authorization': `Bearer ${HF_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        timeout: 60000 // 60 second timeout
       }
     );
+
+    console.log('Response status:', response.status);
 
     // Convert image to base64
     const base64Image = Buffer.from(response.data, 'binary').toString('base64');
     const imageUrl = `data:image/png;base64,${base64Image}`;
 
-    console.log('✅ Image generated');
+    console.log('✅ Image generated successfully');
 
     return {
       success: true,
@@ -62,10 +74,14 @@ async function generateImage(traits) {
     };
 
   } catch (error) {
-    console.error('Image generation error:', error.message);
+    console.error('❌ Image generation error:');
+    console.error('Status:', error.response?.status);
+    console.error('Message:', error.message);
+    console.error('Data:', error.response?.data?.toString());
+    
     return {
       success: false,
-      error: error.message
+      error: `Hugging Face error: ${error.message}`
     };
   }
 }
