@@ -1,8 +1,3 @@
-const axios = require('axios');
-require('dotenv').config();
-
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
-
 function createPromptFromTraits(traits) {
   const traitMap = {};
   
@@ -16,6 +11,27 @@ function createPromptFromTraits(traits) {
 
   if (traitMap.Background) {
     prompt += `${traitMap.Background} background, `;
+  }
+  if (traitMap.Body) {
+    prompt += `${traitMap.Body} body, `;
+  }
+  if (traitMap.Clothes) {
+    prompt += `wearing ${traitMap.Clothes}, `;
+  }
+  if (traitMap.Mouth) {
+    prompt += `${traitMap.Mouth} mouth, `;
+  }
+  if (traitMap.Eyes) {
+    prompt += `${traitMap.Eyes} eyes, `;
+  }
+  if (traitMap.Headgear) {
+    prompt += `${traitMap.Headgear} on head, `;
+  }
+  if (traitMap['Left Hand']) {
+    prompt += `holding ${traitMap['Left Hand']} in left hand, `;
+  }
+  if (traitMap['Right Hand']) {
+    prompt += `${traitMap['Right Hand']} in right hand, `;
   }
   if (traitMap.Type) {
     prompt += `${traitMap.Type}, `;
@@ -31,41 +47,15 @@ function createPromptFromTraits(traits) {
 async function generateImage(traits) {
   try {
     const prompt = createPromptFromTraits(traits);
-    console.log('Generating image with Hugging Face...');
-    console.log('Prompt:', prompt);
-    console.log('API Key present:', HF_API_KEY ? 'Yes' : 'No');
+    console.log('🎨 Generating image with Pollinations.ai...');
+    console.log('📝 Prompt:', prompt);
 
-    if (!HF_API_KEY) {
-      throw new Error('HUGGINGFACE_API_KEY not found in environment variables');
-    }
+    // Pollinations.ai - completely free, no API key needed!
+    const encodedPrompt = encodeURIComponent(prompt);
+    const seed = Date.now(); // Random seed for variety
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true&enhance=true`;
 
-    // UPDATED: Using new Hugging Face router endpoint
-    const response = await axios.post(
-      'https://router.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-      {
-        inputs: prompt,
-        parameters: {
-          num_inference_steps: 30,
-          guidance_scale: 7.5
-        }
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${HF_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        responseType: 'arraybuffer',
-        timeout: 60000
-      }
-    );
-
-    console.log('Response status:', response.status);
-
-    // Convert image to base64
-    const base64Image = Buffer.from(response.data, 'binary').toString('base64');
-    const imageUrl = `data:image/png;base64,${base64Image}`;
-
-    console.log('✅ Image generated successfully');
+    console.log('✅ Image URL generated:', imageUrl);
 
     return {
       success: true,
@@ -74,16 +64,10 @@ async function generateImage(traits) {
     };
 
   } catch (error) {
-    console.error('❌ Image generation error:');
-    console.error('Status:', error.response?.status);
-    console.error('Message:', error.message);
-    if (error.response?.data) {
-      console.error('Data:', error.response.data.toString());
-    }
-    
+    console.error('❌ Image generation error:', error.message);
     return {
       success: false,
-      error: `Hugging Face error: ${error.message}`
+      error: error.message
     };
   }
 }
