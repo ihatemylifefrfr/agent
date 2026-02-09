@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './Gallery.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'https://agent-production-8680.up.railway.app';
 
 function Gallery() {
   const [posts, setPosts] = useState([]);
@@ -19,9 +19,10 @@ function Gallery() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/api/feed`);
-      setPosts(response.data.posts);
+      setPosts(response.data.items);  // ✅ Changed from .posts to .items
       setLoading(false);
     } catch (err) {
+      console.error('Error fetching posts:', err);
       setError('Failed to load gallery. Make sure backend is running.');
       setLoading(false);
     }
@@ -124,9 +125,9 @@ function Gallery() {
           <div className="gallery-grid">
             {filteredPosts.map(post => (
               <div key={post.id} className="art-card">
-                <img src={post.image_url} alt={post.prompt} />
+                <img src={post.image_url} alt={post.prompt || 'NFT Artwork'} />
                 <div className="art-info">
-                  <p className="prompt">{post.prompt}</p>
+                  <p className="prompt">{post.prompt || 'No prompt available'}</p>
                   <div className="traits">
                     {post.traits && Array.isArray(post.traits) && post.traits.map((trait, idx) => (
                       <span 
@@ -141,8 +142,8 @@ function Gallery() {
                     ))}
                   </div>
                   <div className="meta">
-                    <Link to={`/agent/${post.agent_id}`} className="agent-link">
-                      Agent #{post.agent_id}
+                    <Link to={`/agent/${post.id}`} className="agent-link">
+                      Agent #{post.id}
                     </Link>
                     <span className="date">
                       {new Date(post.created_at).toLocaleDateString()}
