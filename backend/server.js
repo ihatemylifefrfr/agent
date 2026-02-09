@@ -1,14 +1,19 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { Pool } = require('pg');
 const { verifyNFTOwnership } = require('./verify-nft');
-const { canAgentPost } = require('./queue');
 const { generateImage } = require('./generate-image');
 const { savePost, getAgentByApiKey, getRecentPosts, getPostsByAgent } = require('./post-art');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 app.use(cors({
   origin: '*'
@@ -45,19 +50,7 @@ app.post('/api/verify', async (req, res) => {
   }
 });
 
-// Check if agent can post
-app.get('/api/can-post', async (req, res) => {
-  const { agent_id } = req.query;
-
-  if (!agent_id) {
-    return res.status(400).json({ error: 'agent_id required' });
-  }
-
-  const result = await canAgentPost(parseInt(agent_id));
-  res.json(result);
-});
-
-// Agent posts artwork
+// Agent posts artwork - 1 post per agent per day
 app.post('/api/post', async (req, res) => {
   const { api_key } = req.body;
 
@@ -71,13 +64,28 @@ app.post('/api/post', async (req, res) => {
       return res.status(403).json({ error: 'Invalid API key' });
     }
 
-    const queueStatus = await canAgentPost(agent.id);
-    if (!queueStatus.can_post) {
+    // Check if THIS agent already posted today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const agentPostsToday = await pool.query(
+      'SELECT COUNT(*) as count FROM posts WHERE agent_id = $1 AND created_at >= $2',
+      [agent.id, todayStart]
+    );
+
+    const postsToday = parseInt(agentPostsToday.rows[0].count);
+
+    // If already posted today, deny
+    if (postsToday >= 1) {
       return res.status(429).json({
-        error: 'Cannot post yet',
-        queue_status: queueStatus
+        error: 'You already posted today! Try again tomorrow.',
+        agent_id: agent.id,
+        posts_today: postsToday
       });
     }
+
+    // Haven't posted today - generate and post!
+    console.log(`Agent #${agent.id} creating daily artwork...`);
 
     const imageResult = await generateImage(agent.traits);
     if (!imageResult.success) {
@@ -94,7 +102,7 @@ app.post('/api/post', async (req, res) => {
       res.json({
         success: true,
         post: postResult.post,
-        message: 'Artwork posted successfully!'
+        message: 'Artwork posted successfully! See you tomorrow for your next creation!'
       });
     } else {
       res.status(500).json({ error: 'Failed to save post' });
@@ -127,6 +135,8 @@ app.get('/api/agent/:id', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-  console.log(`📄 Skill file available at http://localhost:${PORT}/skill.md`);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`📄 Backend: https://agent-production-8680.up.railway.app`);
+  console.log(`📄 Skill: https://agent-production-8680.up.railway.app/skill.md`);
+  console.log(`🎨 Gallery: https://agent-phi-beige.vercel.app`);
 });

@@ -1,19 +1,14 @@
-const Replicate = require('replicate');
+const axios = require('axios');
 require('dotenv').config();
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_KEY,
-});
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
-// Generate art prompt from NFT traits
 function createPromptFromTraits(traits) {
-  // Extract trait values
   const traitMap = {};
   traits.forEach(t => {
     traitMap[t.trait_type] = t.value;
   });
 
-  // Build creative prompt
   let prompt = 'digital art, highly detailed, ';
 
   if (traitMap.Background) {
@@ -27,32 +22,38 @@ function createPromptFromTraits(traits) {
   }
 
   prompt += 'vibrant colors, fantasy art, masterpiece, 4k';
-
   return prompt;
 }
 
-// Generate image using Replicate
-// Generate image using Google Imagen 4
 async function generateImage(traits) {
   try {
     const prompt = createPromptFromTraits(traits);
-    console.log('Generating image with Imagen 4...');
-    console.log('Prompt:', prompt);
+    console.log('Generating image with prompt:', prompt);
 
-    const output = await replicate.run(
-      "google/imagen-4",
+    // Using Stable Diffusion XL on Hugging Face
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
       {
-        input: {
-          prompt: prompt,
-          aspect_ratio: "1:1",  // Square format for gallery
-          safety_filter_level: "block_medium_and_above"
+        inputs: prompt,
+        parameters: {
+          num_inference_steps: 25,
+          guidance_scale: 7.5
         }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${HF_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'arraybuffer'
       }
     );
 
-    // Replicate returns array of image URLs
-    const imageUrl = output[0];
-    console.log('✅ Image generated:', imageUrl);
+    // Convert image to base64
+    const base64Image = Buffer.from(response.data, 'binary').toString('base64');
+    const imageUrl = `data:image/png;base64,${base64Image}`;
+
+    console.log('✅ Image generated');
 
     return {
       success: true,
