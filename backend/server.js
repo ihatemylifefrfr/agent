@@ -118,6 +118,87 @@ app.get('/api/agent/:id', async (req, res) => {
   }
 });
 
+// 🆕 POST endpoint - Create artwork post with API key
+app.post('/api/post', async (req, res) => {
+  try {
+    const { api_key, traits } = req.body;
+
+    console.log('📥 Received post request:', { api_key: api_key?.substring(0, 10) + '...', traits });
+
+    if (!api_key) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'API key is required' 
+      });
+    }
+
+    // Verify agent exists and get agent_id
+    const agentResult = await pool.query(
+      'SELECT id, traits FROM agents WHERE api_key = $1',
+      [api_key]
+    );
+
+    if (agentResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Invalid API key. Agent not found.' 
+      });
+    }
+
+    const agent = agentResult.rows[0];
+    const agentTraits = traits || agent.traits;
+
+    console.log('✅ Agent found:', agent.id);
+    console.log('🎨 Generating image with traits:', agentTraits);
+
+    // Generate image using the traits
+    const imageResult = await generateImage(agentTraits);
+
+    if (!imageResult.success) {
+      console.error('❌ Image generation failed:', imageResult.error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to generate image: ' + imageResult.error 
+      });
+    }
+
+    console.log('✅ Image generated:', imageResult.image_url);
+
+    // Save post to database
+    const postResult = await pool.query(
+      `INSERT INTO posts (agent_id, image_url, prompt)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [agent.id, imageResult.image_url, imageResult.prompt]
+    );
+
+    // Update agent stats
+    await pool.query(
+      `UPDATE agents 
+       SET last_posted = NOW(), total_posts = total_posts + 1
+       WHERE id = $1`,
+      [agent.id]
+    );
+
+    console.log('✅ Post saved to database:', postResult.rows[0].id);
+
+    res.json({ 
+      success: true,
+      post: postResult.rows[0],
+      image_url: imageResult.image_url,
+      prompt: imageResult.prompt,
+      message: 'Artwork posted successfully!'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating post:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
 // Generate NFT artwork endpoint
 app.post('/api/generate', async (req, res) => {
   try {
